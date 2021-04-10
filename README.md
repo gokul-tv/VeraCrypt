@@ -1,3 +1,5 @@
+# For instruction on how to expand veracrypt system volume without decrypting see [EXPAND.md](./EXPAND.md).
+
 This archive contains the source code of VeraCrypt.
 It is based on original TrueCrypt 7.1a with security enhancements and modifications.
 
