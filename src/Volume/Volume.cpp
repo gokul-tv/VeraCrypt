@@ -9,6 +9,7 @@
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages.
 */
+#include <stdio.h>
 
 #ifndef TC_WINDOWS
 #include <errno.h>
@@ -107,6 +108,7 @@ namespace VeraCrypt
 
 	void Volume::Open (shared_ptr <File> volumeFile, shared_ptr <VolumePassword> password, int pim, shared_ptr <Pkcs5Kdf> kdf, bool truecryptMode, shared_ptr <KeyfileList> keyfiles, VolumeProtection::Enum protection, shared_ptr <VolumePassword> protectionPassword, int protectionPim, shared_ptr <Pkcs5Kdf> protectionKdf,shared_ptr <KeyfileList> protectionKeyfiles, VolumeType::Enum volumeType, bool useBackupHeaders, bool partitionInSystemEncryptionScope)
 	{
+		puts("Volume::Open");
 		if (!volumeFile)
 			throw ParameterIncorrect (SRC_POS);
 
@@ -156,6 +158,7 @@ namespace VeraCrypt
 						driveDevice.SeekAt (headerOffset);
 					else
 						driveDevice.SeekEnd (headerOffset);
+					printf("Header offset: %d\n", headerOffset);
 
 					if (driveDevice.Read (headerBuffer) != layout->GetHeaderSize())
 						continue;
@@ -171,6 +174,7 @@ namespace VeraCrypt
 						VolumeFile->SeekAt (headerOffset);
 					else
 						VolumeFile->SeekEnd (headerOffset);
+					printf("Header offset: %d\n", headerOffset);
 
 					if (VolumeFile->Read (headerBuffer) != layout->GetHeaderSize())
 						continue;
@@ -192,6 +196,7 @@ namespace VeraCrypt
 
 				if (header->Decrypt (headerBuffer, *passwordKey, pim, kdf, truecryptMode, layout->GetSupportedKeyDerivationFunctions(truecryptMode), layoutEncryptionAlgorithms, layoutEncryptionModes))
 				{
+					puts("VolumeHeader::Decrypt OK");
 					// Header decrypted
 
 					if (!truecryptMode && typeid (*layout) == typeid (VolumeLayoutV2Normal) && header->GetRequiredMinProgramVersion() < 0x10b)

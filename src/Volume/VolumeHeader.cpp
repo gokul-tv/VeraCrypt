@@ -17,6 +17,9 @@
 #include "VolumeHeader.h"
 #include "VolumeException.h"
 #include "Common/Crypto.h"
+#include "Common/Hexdump.h"
+
+#include <stdio.h>
 
 namespace VeraCrypt
 {
@@ -88,6 +91,7 @@ namespace VeraCrypt
 			throw PasswordEmpty (SRC_POS);
 
 		ConstBufferPtr salt (encryptedData.GetRange (SaltOffset, SaltSize));
+		Salt.CopyFrom (salt);
 		SecureBuffer header (EncryptedHeaderDataSize);
 		SecureBuffer headerKey (GetLargestSerializedKeySize());
 
@@ -127,9 +131,24 @@ namespace VeraCrypt
 
 					if (Deserialize (header, ea, mode, truecryptMode))
 					{
+						puts("Decrypt OK.");
+						printf("PKCS type: %S\n", pkcs5->GetName().c_str());
+						puts("Volume Header dump (SENSITIVE DATA):");
+						Hexdump(header, 512-EncryptedHeaderDataOffset);
+						puts("Salt:");
+						Hexdump(salt, SaltSize);
+						SecureBuffer encryptedHeader (EncryptedHeaderDataSize);
+						encryptedHeader.CopyFrom (encryptedData.GetRange (EncryptedHeaderDataOffset, EncryptedHeaderDataSize));
+						puts("Encrypted header (including salt):");
+						Hexdump(encryptedData, 512);
+						HeaderKey.CopyFrom (headerKey);
+						puts("Header key:");
+						Hexdump(headerKey, headerKey.Size());
+
 						EA = ea;
 						Pkcs5 = pkcs5;
 						return true;
+					} else {
 					}
 				}
 			}
@@ -192,6 +211,16 @@ namespace VeraCrypt
 		EncryptedAreaStart = DeserializeEntry <uint64> (header, offset);
 		EncryptedAreaLength = DeserializeEntry <uint64> (header, offset);
 		Flags = DeserializeEntry <uint32> (header, offset);
+
+		printf("VolumeKeyAreaCrc32 = %x\n", VolumeKeyAreaCrc32);
+		printf("VolumeCreationTime = %lx\n", VolumeCreationTime);
+		printf("HeaderCreationTime = %lx\n", HeaderCreationTime);
+		printf("HiddenVolumeDataSize = %lx\n", HiddenVolumeDataSize);
+		printf("mVolumeType = %x\n", mVolumeType);
+		printf("VolumeDataSize = %lx\n", VolumeDataSize);
+		printf("EncryptedAreaStart = %lx\n", EncryptedAreaStart);
+		printf("EncryptedAreaLength = %lx\n", EncryptedAreaLength);
+		printf("Flags = %x\n", Flags);
 
 		SectorSize = DeserializeEntry <uint32> (header, offset);
 		if (HeaderVersion < 5)
@@ -286,6 +315,33 @@ namespace VeraCrypt
 			Pkcs5 = newPkcs5Kdf;
 	}
 
+	void VolumeHeader::Encrypt (const BufferPtr &newHeaderBuffer) {
+		if (newHeaderBuffer.Size() != HeaderSize)
+			throw ParameterIncorrect (SRC_POS);
+
+		shared_ptr <EncryptionMode> mode = EA->GetMode()->GetNew();
+		shared_ptr <EncryptionAlgorithm> ea = EA->GetNew();
+
+		if (typeid (*mode) == typeid (EncryptionModeXTS))
+		{
+			mode->SetKey (HeaderKey.GetRange (EA->GetKeySize(), EA->GetKeySize()));
+			ea->SetKey (HeaderKey.GetRange (0, ea->GetKeySize()));
+		}
+		else
+		{
+			mode->SetKey (HeaderKey.GetRange (0, mode->GetKeySize()));
+			ea->SetKey (HeaderKey.GetRange (LegacyEncryptionModeKeyAreaSize, ea->GetKeySize()));
+		}
+
+		ea->SetMode (mode);
+
+		newHeaderBuffer.CopyFrom (Salt);
+
+		BufferPtr headerData = newHeaderBuffer.GetRange (EncryptedHeaderDataOffset, EncryptedHeaderDataSize);
+		Serialize (headerData);
+		ea->Encrypt (headerData);
+	}
+
 	size_t VolumeHeader::GetLargestSerializedKeySize ()
 	{
 		size_t largestKey = EncryptionAlgorithm::GetLargestKeySize (EncryptionAlgorithm::GetAvailableAlgorithms());
@@ -356,5 +412,10 @@ namespace VeraCrypt
 	{
 		HeaderSize = headerSize;
 		EncryptedHeaderDataSize = HeaderSize - EncryptedHeaderDataOffset;
+	}
+
+	uint32 VolumeHeader::GetSize()
+	{
+		return HeaderSize;
 	}
 }

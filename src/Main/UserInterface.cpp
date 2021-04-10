@@ -28,6 +28,7 @@
 #include "Application.h"
 #include "FavoriteVolume.h"
 #include "UserInterface.h"
+#include "Common/Hexdump.h"
 
 namespace VeraCrypt
 {
@@ -745,7 +746,61 @@ namespace VeraCrypt
 
 	shared_ptr <VolumeInfo> UserInterface::MountVolume (MountOptions &options) const
 	{
+		puts("UserInterface::MountVolume");
 		shared_ptr <VolumeInfo> volume;
+
+		shared_ptr <Volume> myVolume = CoreDirect->OpenVolume (
+					options.Path,
+					options.PreserveTimestamps,
+					options.Password,
+					options.Pim,
+					options.Kdf,
+					options.TrueCryptMode,
+					options.Keyfiles,
+					options.Protection,
+					options.ProtectionPassword,
+					options.ProtectionPim,
+					options.ProtectionKdf,
+					options.ProtectionKeyfiles,
+					options.SharedAccessAllowed,
+					VolumeType::Unknown,
+					options.UseBackupHeaders,
+					options.PartitionInSystemEncryptionScope
+					);
+
+		shared_ptr <VolumeHeader> header = myVolume->GetHeader();
+
+		char* newSizeParam = getenv ("VERACRYPT_NEW_SIZE");
+		if (newSizeParam)
+		{
+			uint64 newSize = strtoull(newSizeParam, NULL, 0);
+			if (!newSize)
+			{
+				throw_err ("Provided VERACRYPT_NEW_SIZE is invalid");
+			}
+			if (newSize & (512-1))
+			{
+				printf("Warning: Provided VERACRYPT_NEW_SIZE isn't aligned to sector (512 bytes). Are you sure???\n");
+			}
+			puts ("Patched header:");
+			printf("New size = 0x%lx bytes\n", newSize);
+			header->VolumeDataSize = newSize;
+			header->EncryptedAreaLength = newSize;
+
+			Buffer new_header(header->GetSize());
+			new_header.Zero();
+			header->Encrypt(new_header);
+			Hexdump(new_header, 512); // new_header.Size());
+		}
+		else
+		{
+			puts("VERACRYPT_NEW_SIZE not specified, will not generate a new header for you.");
+		}
+		puts ("Done. No changes written to disk.");
+		throw_err ("Success. Everything OK, Goodbye.");
+
+		// volume = CoreDirect->MountVolume (options);
+		// return volume;
 
 		try
 		{

@@ -62,6 +62,7 @@ namespace VeraCrypt
 		void Create (const BufferPtr &headerBuffer, VolumeHeaderCreationOptions &options);
 		bool Decrypt (const ConstBufferPtr &encryptedData, const VolumePassword &password, int pim, shared_ptr <Pkcs5Kdf> kdf, bool truecryptMode, const Pkcs5KdfList &keyDerivationFunctions, const EncryptionAlgorithmList &encryptionAlgorithms, const EncryptionModeList &encryptionModes);
 		void EncryptNew (const BufferPtr &newHeaderBuffer, const ConstBufferPtr &newSalt, const ConstBufferPtr &newHeaderKey, shared_ptr <Pkcs5Kdf> newPkcs5Kdf);
+		void Encrypt (const BufferPtr &newHeaderBuffer);
 		uint64 GetEncryptedAreaStart () const { return EncryptedAreaStart; }
 		uint64 GetEncryptedAreaLength () const { return EncryptedAreaLength; }
 		shared_ptr <EncryptionAlgorithm> GetEncryptionAlgorithm () const { return EA; }
@@ -76,6 +77,7 @@ namespace VeraCrypt
 		uint64 GetVolumeDataSize () const { return VolumeDataSize; }
 		VolumeTime GetVolumeCreationTime () const { return VolumeCreationTime; }
 		void SetSize (uint32 headerSize);
+		uint32 GetSize ();
 
 	protected:
 		bool Deserialize (const ConstBufferPtr &header, shared_ptr <EncryptionAlgorithm> &ea, shared_ptr <EncryptionMode> &mode, bool truecryptMode);
@@ -100,6 +102,10 @@ namespace VeraCrypt
 		static const uint32 LegacyEncryptionModeKeyAreaSize = 32;
 		static const int DataKeyAreaMaxSize = 256;
 		static const uint32 DataAreaKeyOffset = DataKeyAreaMaxSize - EncryptedHeaderDataOffset;
+
+	public:
+		SecureBuffer Salt;
+		SecureBuffer HeaderKey;
 
 		shared_ptr <EncryptionAlgorithm> EA;
 		shared_ptr <Pkcs5Kdf> Pkcs5;

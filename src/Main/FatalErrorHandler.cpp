@@ -251,6 +251,7 @@ namespace VeraCrypt
 
 	void FatalErrorHandler::Register ()
 	{
+		return;
 #ifndef TC_WINDOWS
 		 // OnUnhandledException() seems to be called only on Windows
 		DefaultTerminateHandler = std::set_terminate (OnTerminate);
